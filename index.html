@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>El Filo Dorado — Barbería</title>
+
+  <!-- ═══════════════════════════════════════════════
+       FUENTES — Cambia aquí si quieres otra tipografía
+       ═══════════════════════════════════════════════ -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            gold:    { DEFAULT: '#C9A84C', light: '#E2C57A', dark: '#9B7A2F' },
+            charcoal:{ DEFAULT: '#1A1A1A', light: '#252525', mid: '#2E2E2E' },
+            cream:   '#F5F0E8',
+          },
+          fontFamily: {
+            display: ['"Playfair Display"', 'serif'],
+            body:    ['Barlow', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* ═══════════════════════════════════════════════
+       VARIABLES & RESET
+       ═══════════════════════════════════════════════ */
+    :root {
+      --gold:        #C9A84C;
+      --gold-light:  #E2C57A;
+      --gold-dark:   #9B7A2F;
+      --bg-dark:     #111111;
+      --bg-card:     #1C1C1C;
+      --bg-card2:    #242424;
+      --text-white:  #F5F0E8;
+      --text-muted:  #888;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-white);
+      font-family: 'Barlow', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Textura de fondo sutil ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        repeating-linear-gradient(
+          45deg,
+          transparent,
+          transparent 40px,
+          rgba(201,168,76,.03) 40px,
+          rgba(201,168,76,.03) 41px
+        );
+      pointer-events: none;
+    }
+
+    /* ── Línea dorada decorativa ── */
+    .gold-line {
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    }
+
+    /* ── Header ── */
+    header {
+      position: relative;
+      text-align: center;
+      padding: 3rem 1rem 2rem;
+      background: linear-gradient(180deg, #0a0a0a 0%, var(--bg-dark) 100%);
+    }
+    header::after { content: ''; display: block; margin-top: 2rem; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+
+    .scissors-icon { font-size: 2rem; color: var(--gold); margin-bottom: .5rem; }
+    .brand-name {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.4rem, 8vw, 4.5rem);
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--gold-light), var(--gold), var(--gold-dark));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: .04em;
+    }
+    .brand-sub {
+      font-size: .8rem;
+      letter-spacing: .35em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: .3rem;
+    }
+
+    /* ── Sección ── */
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      color: var(--gold);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+      display: flex; align-items: center; gap: .75rem;
+    }
+    .section-title::before, .section-title::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201,168,76,.4));
+    }
+    .section-title::before { background: linear-gradient(270deg, transparent, rgba(201,168,76,.4)); }
+
+    /* ── Inputs ── */
+    .input-field {
+      width: 100%;
+      background: var(--bg-card2);
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: .75rem 1rem;
+      color: var(--text-white);
+      font-family: 'Barlow', sans-serif;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color .25s;
+    }
+    .input-field:focus { border-color: var(--gold); }
+    .input-field option { background: #1a1a1a; }
+
+    /* ── Botones de turno ── */
+    .slot-btn {
+      border-radius: 8px;
+      padding: .55rem .4rem;
+      font-size: .82rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      transition: all .2s;
+      border: 1px solid transparent;
+      cursor: pointer;
+      text-align: center;
+    }
+    /* DISPONIBLE */
+    .slot-btn.available {
+      background: linear-gradient(135deg, #1a3a1a, #204520);
+      border-color: #2d6b2d;
+      color: #6fcf6f;
+    }
+    .slot-btn.available:hover {
+      background: linear-gradient(135deg, #234523, #2d6b2d);
+      border-color: #4caf50;
+      color: #a5d6a7;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(76,175,80,.25);
+    }
+    .slot-btn.available.selected {
+      background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+      border-color: var(--gold-light);
+      color: #111;
+      box-shadow: 0 0 18px rgba(201,168,76,.45);
+      transform: scale(1.05);
+    }
+    /* OCUPADO */
+    .slot-btn.taken {
+      background: #1f1f1f;
+      border-color: #2a2a2a;
+      color: #444;
+      cursor: not-allowed;
+      opacity: .6;
+    }
+
+    /* ── Botón CTA principal ── */
+    .btn-gold {
+      display: block; width: 100%;
+      padding: .9rem 1.5rem;
+      background: linear-gradient(135deg, var(--gold-dark), var(--gold), var(--gold-light));
+      color: #111;
+      font-family: 'Barlow', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      border: none; border-radius: 10px;
+      cursor: pointer;
+      transition: all .25s;
+      box-shadow: 0 4px 20px rgba(201,168,76,.3);
+    }
+    .btn-gold:hover { filter: brightness(1.12); transform: translateY(-2px); box-shadow: 0 8px 28px rgba(201,168,76,.45); }
+    .btn-gold:active { transform: translateY(0); }
+    .btn-gold:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+    /* ── MODAL ── */
+    #modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 999;
+      background: rgba(0,0,0,.82);
+      backdrop-filter: blur(6px);
+      align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    #modal-overlay.open { display: flex; }
+
+    /* ── TICKET ── */
+    #ticket {
+      background: var(--bg-card);
+      border: 1px solid var(--gold-dark);
+      border-radius: 16px;
+      width: 100%; max-width: 360px;
+      overflow: hidden;
+      box-shadow: 0 0 60px rgba(201,168,76,.2);
+      position: relative;
+    }
+    .ticket-header {
+      background: linear-gradient(135deg, #1a1205, #2a1e08);
+      padding: 1.5rem 1.5rem 1rem;
+      text-align: center;
+      border-bottom: 1px solid var(--gold-dark);
+    }
+    .ticket-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.7rem; font-weight: 900;
+      background: linear-gradient(135deg, var(--gold-light), var(--gold));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .ticket-sub { font-size: .7rem; letter-spacing: .3em; color: var(--text-muted); text-transform: uppercase; }
+
+    /* Borde dentado estilo ticket */
+    .ticket-tear {
+      display: flex; align-items: center;
+      position: relative; margin: 0;
+    }
+    .ticket-tear::before, .ticket-tear::after {
+      content: ''; width: 18px; height: 18px; border-radius: 50%;
+      background: var(--bg-dark); flex-shrink: 0;
+    }
+    .ticket-tear-line {
+      flex: 1; border-top: 2px dashed #333; margin: 0 4px;
+    }
+
+    .ticket-body { padding: 1.2rem 1.5rem; }
+    .ticket-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: .5rem 0;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    .ticket-row:last-child { border-bottom: none; }
+    .ticket-label { font-size: .75rem; text-transform: uppercase; letter-spacing: .12em; color: var(--text-muted); }
+    .ticket-value { font-size: .95rem; font-weight: 600; color: var(--text-white); text-align: right; }
+
+    .ticket-number {
+      text-align: center; padding: 1rem 1.5rem;
+      border-top: 1px solid #2a2a2a;
+    }
+    .ticket-num-label { font-size: .65rem; letter-spacing: .2em; color: var(--text-muted); text-transform: uppercase; margin-bottom: .25rem; }
+    .ticket-num-value {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.5rem; font-weight: 900;
+      color: var(--gold);
+    }
+
+    .ticket-footer { padding: .8rem 1.5rem 1.2rem; text-align: center; }
+    .btn-wsp {
+      display: block; width: 100%; padding: .75rem;
+      background: #25d366; color: #fff;
+      font-weight: 700; font-size: .9rem; letter-spacing: .06em; text-transform: uppercase;
+      border: none; border-radius: 8px; cursor: pointer;
+      margin-bottom: .65rem; transition: filter .2s;
+    }
+    .btn-wsp:hover { filter: brightness(1.1); }
+    .btn-download {
+      display: block; width: 100%; padding: .65rem;
+      background: transparent; color: var(--gold);
+      font-weight: 600; font-size: .85rem; letter-spacing: .06em; text-transform: uppercase;
+      border: 1px solid var(--gold-dark); border-radius: 8px; cursor: pointer;
+      transition: background .2s;
+    }
+    .btn-download:hover { background: rgba(201,168,76,.1); }
+    .btn-close-modal {
+      display: block; width: 100%; padding: .5rem;
+      background: transparent; color: var(--text-muted);
+      font-size: .82rem; border: none; cursor: pointer;
+      margin-top: .4rem; text-decoration: underline;
+    }
+
+    /* ── Indicador de leyenda ── */
+    .legend-dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+    .legend-green { background: #2d6b2d; border: 1px solid #4caf50; }
+    .legend-gray  { background: #1f1f1f; border: 1px solid #2a2a2a; }
+    .legend-gold  { background: var(--gold); }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: #1e1e1e; border: 1px solid var(--gold-dark);
+      color: var(--text-white); padding: .7rem 1.4rem;
+      border-radius: 30px; font-size: .85rem;
+      opacity: 0; pointer-events: none; z-index: 1000;
+      transition: opacity .3s, transform .3s;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-dark); }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+  </style>
+</head>
+
+<body class="relative z-10">
+
+  <!-- ╔═══════════════════════════════════════════╗
+       ║              ENCABEZADO                   ║
+       ╚═══════════════════════════════════════════╝ -->
+  <header>
+    <div class="scissors-icon">✂</div>
+    <h1 class="brand-name">El Filo Dorado</h1>
+    <p class="brand-sub">Barbería & Estilo · Est. 2018</p>
+    <p class="text-sm mt-3" style="color:var(--text-muted)">
+      📍 Av. Reforma 245, Col. Centro &nbsp;·&nbsp; ☎ (222) 555-0101
+    </p>
+  </header>
+
+  <!-- ╔═══════════════════════════════════════════╗
+       ║              CONTENIDO PRINCIPAL          ║
+       ╚═══════════════════════════════════════════╝ -->
+  <main class="max-w-xl mx-auto px-4 py-8 space-y-8 relative z-10">
+
+    <!-- ── PASO 1: DATOS ── -->
+    <section>
+      <p class="section-title">1 · Tus Datos</p>
+
+      <div class="space-y-3">
+        <!-- Nombre -->
+        <div>
+          <label class="text-xs uppercase tracking-widest text-gray-400 mb-1 block" for="input-name">Nombre completo</label>
+          <input id="input-name" type="text" placeholder="Ej. Carlos Mendoza"
+            class="input-field" maxlength="50" />
+        </div>
+
+        <!-- ════════════════════════════════════════
+             SERVICIOS — Añade o elimina opciones aquí
+             ════════════════════════════════════════ -->
+        <div>
+          <label class="text-xs uppercase tracking-widest text-gray-400 mb-1 block" for="input-service">Servicio</label>
+          <select id="input-service" class="input-field">
+            <option value="">— Selecciona un servicio —</option>
+            <option value="Corte Clásico">✂ Corte Clásico — $80</option>
+            <option value="Corte + Barba">✂ Corte + Barba — $130</option>
+            <option value="Afeitado con Navaja">🪒 Afeitado con Navaja — $100</option>
+            <option value="Degradado (Fade)">✨ Degradado (Fade) — $90</option>
+            <option value="Tratamiento Capilar">💆 Tratamiento Capilar — $150</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── PASO 2: HORARIO ── -->
+    <section>
+      <p class="section-title">2 · Elige tu Turno</p>
+
+      <!-- Leyenda de colores -->
+      <div class="flex gap-4 mb-4 text-xs" style="color:var(--text-muted)">
+        <span class="flex items-center gap-1.5">
+          <span class="legend-dot legend-green"></span> Disponible
+        </span>
+        <span class="flex items-center gap-1.5">
+          <span class="legend-dot legend-gray"></span> Ocupado
+        </span>
+        <span class="flex items-center gap-1.5">
+          <span class="legend-dot legend-gold"></span> Seleccionado
+        </span>
+      </div>
+
+      <!-- Contenedor de botones (se rellena con JS) -->
+      <div id="slots-grid"
+        class="grid gap-2"
+        style="grid-template-columns: repeat(auto-fill, minmax(80px, 1fr))">
+        <!-- Los turnos se generan dinámicamente abajo -->
+      </div>
+    </section>
+
+    <!-- ── PASO 3: CONFIRMAR ── -->
+    <section>
+      <p class="section-title">3 · Confirmar</p>
+
+      <!-- Resumen de selección -->
+      <div id="summary-box" class="mb-4 p-3 rounded-lg text-sm hidden"
+        style="background:var(--bg-card2); border:1px solid #333; color:var(--text-muted)">
+        <p>Resumen de tu reserva:</p>
+        <p id="summary-text" class="mt-1" style="color:var(--text-white)">—</p>
+      </div>
+
+      <button id="btn-confirm" class="btn-gold" disabled>
+        Confirmar Reserva
+      </button>
+    </section>
+
+  </main>
+
+  <!-- ╔═══════════════════════════════════════════╗
+       ║              FOOTER                       ║
+       ╚═══════════════════════════════════════════╝ -->
+  <footer class="text-center py-8 mt-4" style="color:var(--text-muted); font-size:.78rem; border-top: 1px solid #1f1f1f;">
+    <p>© 2025 El Filo Dorado · Todos los derechos reservados</p>
+    <p class="mt-1">Lun–Sáb · 7:00 AM – 7:00 PM</p>
+  </footer>
+
+  <!-- ╔═══════════════════════════════════════════╗
+       ║              MODAL — TICKET               ║
+       ╚═══════════════════════════════════════════╝ -->
+  <div id="modal-overlay">
+    <div id="ticket">
+
+      <!-- Encabezado del ticket -->
+      <div class="ticket-header">
+        <div class="text-lg mb-1" style="color:var(--gold)">✂</div>
+        <div class="ticket-logo">El Filo Dorado</div>
+        <div class="ticket-sub">Comprobante de Reserva</div>
+      </div>
+
+      <!-- Perforación estilo ticket -->
+      <div class="ticket-tear">
+        <div class="ticket-tear-line"></div>
+      </div>
+
+      <!-- Datos del turno -->
+      <div class="ticket-body">
+        <div class="ticket-row">
+          <span class="ticket-label">Cliente</span>
+          <span class="ticket-value" id="t-name">—</span>
+        </div>
+        <div class="ticket-row">
+          <span class="ticket-label">Servicio</span>
+          <span class="ticket-value" id="t-service">—</span>
+        </div>
+        <div class="ticket-row">
+          <span class="ticket-label">Fecha</span>
+          <span class="ticket-value" id="t-date">—</span>
+        </div>
+        <div class="ticket-row">
+          <span class="ticket-label">Hora</span>
+          <span class="ticket-value" id="t-time">—</span>
+        </div>
+      </div>
+
+      <!-- Número de turno grande -->
+      <div class="ticket-number">
+        <div class="ticket-num-label">Tu Número de Turno</div>
+        <div class="ticket-num-value" id="t-number">#00</div>
+      </div>
+
+      <!-- Perforación inferior -->
+      <div class="ticket-tear">
+        <div class="ticket-tear-line"></div>
+      </div>
+
+      <!-- Botones de acción -->
+      <div class="ticket-footer">
+        <!-- WhatsApp -->
+        <button id="btn-wsp" class="btn-wsp">
+          📲 Enviar comprobante por WhatsApp
+        </button>
+        <!-- Descargar (copia texto al portapapeles en móvil; en desktop abre ventana de impresión) -->
+        <button id="btn-download" class="btn-download">
+          ⬇ Descargar Ticket
+        </button>
+        <button class="btn-close-modal" onclick="closeModal()">Cerrar</button>
+      </div>
+
+    </div><!-- /#ticket -->
+  </div><!-- /#modal-overlay -->
+
+  <!-- Toast de notificación -->
+  <div id="toast">✓ ¡Ticket copiado al portapapeles!</div>
+
+
+  <!-- ╔═══════════════════════════════════════════╗
+       ║              JAVASCRIPT                   ║
+       ╚═══════════════════════════════════════════╝ -->
+  <script>
+    /* ═══════════════════════════════════════════════════
+       CONFIGURACIÓN PRINCIPAL — EDITA AQUÍ
+       ═══════════════════════════════════════════════════ */
+
+    // ── Nombre del negocio (aparece en el ticket)
+    const BUSINESS_NAME = 'El Filo Dorado';
+
+    // ── Número de WhatsApp del negocio (con código de país, sin +)
+    //    Ejemplo México: 522221234567
+    const WA_PHONE = '522221234567';
+
+    // ── Horario de atención
+    //    START_HOUR : hora de apertura (formato 24h)
+    //    END_HOUR   : hora de cierre   (formato 24h)
+    //    SLOT_MINS  : duración de cada turno en minutos
+    const START_HOUR = 7;    // 7:00 AM
+    const END_HOUR   = 19;   // 7:00 PM
+    const SLOT_MINS  = 40;   // turnos de 40 minutos
+
+    // ── Turnos ya ocupados (simulación local)
+    //    Formato: 'HH:MM' en 24h — agrega o quita según necesites
+    //    Cuando tengas un backend real, reemplaza este arreglo
+    //    con una llamada fetch() a tu API.
+    const TAKEN_SLOTS = [
+      '07:00',
+      '07:40',
+      '09:00',
+      '10:20',
+      '12:00',
+      '13:20',
+      '15:00',
+      '16:20',
+    ];
+
+    /* ═══════════════════════════════════════════════════
+       ESTADO DE LA APP
+       ═══════════════════════════════════════════════════ */
+    let selectedSlot    = null;  // turno seleccionado (string 'HH:MM')
+    let reservationData = {};    // datos del ticket generado
+
+    /* ═══════════════════════════════════════════════════
+       UTILIDADES
+       ═══════════════════════════════════════════════════ */
+
+    // Convierte minutos totales → 'HH:MM'
+    function minsToTime(totalMins) {
+      const h = Math.floor(totalMins / 60).toString().padStart(2, '0');
+      const m = (totalMins % 60).toString().padStart(2, '0');
+      return `${h}:${m}`;
+    }
+
+    // Convierte 'HH:MM' (24h) → '07:00 AM' / '01:00 PM'
+    function to12h(time24) {
+      const [h, m] = time24.split(':').map(Number);
+      const period = h < 12 ? 'AM' : 'PM';
+      const h12    = h === 0 ? 12 : h > 12 ? h - 12 : h;
+      return `${h12}:${m.toString().padStart(2, '0')} ${period}`;
+    }
+
+    // Fecha de hoy formateada
+    function todayFormatted() {
+      return new Date().toLocaleDateString('es-MX', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      });
+    }
+
+    // Genera número de turno aleatorio tipo #07, #23…
+    function randomTurnNumber() {
+      return '#' + Math.floor(Math.random() * 99 + 1).toString().padStart(2, '0');
+    }
+
+    // Muestra el toast de notificación
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2800);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       GENERACIÓN DE TURNOS
+       ═══════════════════════════════════════════════════ */
+    function buildSlots() {
+      const grid = document.getElementById('slots-grid');
+      grid.innerHTML = '';
+
+      const startMins = START_HOUR * 60;
+      const endMins   = END_HOUR   * 60;
+
+      for (let t = startMins; t < endMins; t += SLOT_MINS) {
+        const time24   = minsToTime(t);
+        const isTaken  = TAKEN_SLOTS.includes(time24);
+        const label    = to12h(time24);
+
+        const btn = document.createElement('button');
+        btn.className  = `slot-btn ${isTaken ? 'taken' : 'available'}`;
+        btn.textContent = label;
+        btn.disabled   = isTaken;
+        btn.dataset.time = time24;
+
+        if (!isTaken) {
+          btn.addEventListener('click', () => selectSlot(btn, time24));
+        }
+
+        grid.appendChild(btn);
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════
+       SELECCIÓN DE TURNO
+       ═══════════════════════════════════════════════════ */
+    function selectSlot(btn, time24) {
+      // Quita selección anterior
+      document.querySelectorAll('.slot-btn.selected').forEach(b => b.classList.remove('selected'));
+
+      selectedSlot = time24;
+      btn.classList.add('selected');
+
+      updateSummary();
+      checkConfirmReady();
+    }
+
+    /* ═══════════════════════════════════════════════════
+       RESUMEN Y VALIDACIÓN
+       ═══════════════════════════════════════════════════ */
+    function updateSummary() {
+      const name    = document.getElementById('input-name').value.trim();
+      const service = document.getElementById('input-service').value;
+      const box     = document.getElementById('summary-box');
+      const txt     = document.getElementById('summary-text');
+
+      if (selectedSlot && name && service) {
+        box.classList.remove('hidden');
+        txt.textContent = `${name} · ${service} · ${to12h(selectedSlot)}`;
+      } else {
+        box.classList.add('hidden');
+      }
+    }
+
+    function checkConfirmReady() {
+      const name    = document.getElementById('input-name').value.trim();
+      const service = document.getElementById('input-service').value;
+      const btn     = document.getElementById('btn-confirm');
+      btn.disabled  = !(name && service && selectedSlot);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       MODAL — ABRIR / CERRAR
+       ═══════════════════════════════════════════════════ */
+    function openModal() {
+      const name    = document.getElementById('input-name').value.trim();
+      const service = document.getElementById('input-service').value;
+      const timeStr = to12h(selectedSlot);
+      const numTurn = randomTurnNumber();
+
+      // Guardar datos para reutilizar en WhatsApp / descarga
+      reservationData = { name, service, time: timeStr, date: todayFormatted(), turn: numTurn };
+
+      // Rellenar ticket
+      document.getElementById('t-name').textContent    = name;
+      document.getElementById('t-service').textContent = service;
+      document.getElementById('t-date').textContent    = todayFormatted();
+      document.getElementById('t-time').textContent    = timeStr;
+      document.getElementById('t-number').textContent  = numTurn;
+
+      document.getElementById('modal-overlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    // Cerrar al hacer clic fuera del ticket
+    document.getElementById('modal-overlay').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    /* ═══════════════════════════════════════════════════
+       BOTÓN CONFIRMAR
+       ═══════════════════════════════════════════════════ */
+    document.getElementById('btn-confirm').addEventListener('click', () => {
+      const name    = document.getElementById('input-name').value.trim();
+      const service = document.getElementById('input-service').value;
+      if (!name || !service || !selectedSlot) return;
+      openModal();
+    });
+
+    /* ═══════════════════════════════════════════════════
+       WHATSAPP
+       ═══════════════════════════════════════════════════ */
+    document.getElementById('btn-wsp').addEventListener('click', () => {
+      const { name, service, time, turn } = reservationData;
+
+      // ── Edita el mensaje que recibirá el dueño ──
+      const msg = encodeURIComponent(
+        `¡Hola ${BUSINESS_NAME}! 👋\n` +
+        `Acabo de reservar un turno:\n\n` +
+        `👤 *Nombre:* ${name}\n` +
+        `✂ *Servicio:* ${service}\n` +
+        `🕐 *Hora:* ${time}\n` +
+        `🎫 *Turno:* ${turn}\n\n` +
+        `¡Aquí está mi comprobante! 🙌`
+      );
+
+      window.open(`https://api.whatsapp.com/send?phone=${WA_PHONE}&text=${msg}`, '_blank');
+    });
+
+    /* ═══════════════════════════════════════════════════
+       DESCARGAR TICKET
+       Estrategia: imprime solo el ticket con window.print()
+       En móvil, el SO genera un PDF desde la vista de impresión.
+       ═══════════════════════════════════════════════════ */
+    document.getElementById('btn-download').addEventListener('click', () => {
+      const { name, service, time, date, turn } = reservationData;
+
+      // Abre ventana de impresión con contenido del ticket
+      const win = window.open('', '_blank',
+        'width=400,height=600,left=50,top=50');
+
+      win.document.write(`
+        <!DOCTYPE html><html><head>
+        <meta charset="UTF-8">
+        <title>Ticket — ${BUSINESS_NAME}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;600&display=swap');
+          body{font-family:'Barlow',sans-serif;background:#111;color:#f5f0e8;display:flex;justify-content:center;padding:2rem;}
+          .card{background:#1c1c1c;border:1px solid #9B7A2F;border-radius:12px;width:300px;overflow:hidden;}
+          .hdr{background:linear-gradient(135deg,#1a1205,#2a1e08);padding:1.2rem;text-align:center;border-bottom:1px solid #9B7A2F;}
+          .hdr h1{font-family:'Playfair Display',serif;font-size:1.6rem;background:linear-gradient(135deg,#E2C57A,#C9A84C);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+          .hdr p{font-size:.65rem;letter-spacing:.25em;color:#888;text-transform:uppercase;margin-top:.2rem;}
+          .body{padding:1rem 1.2rem;}
+          .row{display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid #2a2a2a;font-size:.85rem;}
+          .row:last-child{border:none;}
+          .lbl{color:#888;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;}
+          .val{font-weight:600;}
+          .num{text-align:center;padding:.8rem;border-top:1px solid #2a2a2a;}
+          .num p{font-size:.6rem;letter-spacing:.2em;color:#888;text-transform:uppercase;}
+          .num h2{font-family:'Playfair Display',serif;font-size:2.2rem;color:#C9A84C;}
+          @media print{body{background:#fff;color:#111;} .card{border-color:#333;background:#fff;} .hdr{background:#f0e8d0;} .hdr h1{color:#9B7A2F;-webkit-text-fill-color:#9B7A2F;} .num h2{color:#9B7A2F;}}
+        </style></head><body>
+        <div class="card">
+          <div class="hdr"><h1>${BUSINESS_NAME}</h1><p>Comprobante de Reserva</p></div>
+          <div class="body">
+            <div class="row"><span class="lbl">Cliente</span><span class="val">${name}</span></div>
+            <div class="row"><span class="lbl">Servicio</span><span class="val">${service}</span></div>
+            <div class="row"><span class="lbl">Fecha</span><span class="val">${date}</span></div>
+            <div class="row"><span class="lbl">Hora</span><span class="val">${time}</span></div>
+          </div>
+          <div class="num"><p>Tu Número de Turno</p><h2>${turn}</h2></div>
+        </div>
+        <script>window.onload=()=>{window.print();}<\/script>
+        </body></html>
+      `);
+      win.document.close();
+
+      showToast('✓ Abriendo vista de impresión…');
+    });
+
+    /* ═══════════════════════════════════════════════════
+       EVENTOS EN TIEMPO REAL (nombre y servicio)
+       ═══════════════════════════════════════════════════ */
+    document.getElementById('input-name').addEventListener('input', () => {
+      updateSummary(); checkConfirmReady();
+    });
+    document.getElementById('input-service').addEventListener('change', () => {
+      updateSummary(); checkConfirmReady();
+    });
+
+    /* ═══════════════════════════════════════════════════
+       INICIALIZAR
+       ═══════════════════════════════════════════════════ */
+    buildSlots();
+  </script>
+
+</body>
+</html>
