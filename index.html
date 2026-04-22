@@ -494,54 +494,83 @@
        CONFIGURACIÓN PRINCIPAL — EDITA AQUÍ
        ═══════════════════════════════════════════════════ */
 
-    // ── Nombre del negocio (aparece en el ticket)
+    // ── Nombre del negocio
     const BUSINESS_NAME = 'El Filo Dorado';
 
-    // ── Número de WhatsApp del negocio (con código de país, sin +)
-    //    Ejemplo México: 522221234567
+    // ── WhatsApp del negocio (código de país + número, sin +)
     const WA_PHONE = '522221234567';
 
     // ── Horario de atención
-    //    START_HOUR : hora de apertura (formato 24h)
-    //    END_HOUR   : hora de cierre   (formato 24h)
-    //    SLOT_MINS  : duración de cada turno en minutos
     const START_HOUR = 7;    // 7:00 AM
     const END_HOUR   = 19;   // 7:00 PM
-    const SLOT_MINS  = 40;   // turnos de 40 minutos
+    const SLOT_MINS  = 40;   // minutos por turno
 
-    // ── Turnos ya ocupados (simulación local)
-    //    Formato: 'HH:MM' en 24h — agrega o quita según necesites
-    //    Cuando tengas un backend real, reemplaza este arreglo
-    //    con una llamada fetch() a tu API.
-    const TAKEN_SLOTS = [
+    // ── Turnos bloqueados por el dueño (siempre ocupados, no se tocan con localStorage)
+    //    Útil para bloquear horarios de descanso, llegada temprana, etc.
+    //    Formato: 'HH:MM' en 24h.
+    const BLOCKED_BY_OWNER = [
       '07:00',
       '07:40',
-      '09:00',
-      '10:20',
-      '12:00',
-      '13:20',
-      '15:00',
-      '16:20',
     ];
+
+    /* ═══════════════════════════════════════════════════
+       PERSISTENCIA CON localStorage
+       ═══════════════════════════════════════════════════
+       La clave incluye la fecha de HOY → los datos se
+       resetean solos cada día sin hacer nada.
+
+       Clave:  'barberia_YYYY-MM-DD'
+       Valor:  { takenSlots: ['09:00',…], turnCounter: 5 }
+       ═══════════════════════════════════════════════════ */
+
+    // Clave única por día
+    const LS_KEY = 'barberia_' + new Date().toISOString().slice(0, 10);
+
+    // Lee el estado guardado; si no existe devuelve un estado vacío
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(LS_KEY);
+        if (raw) return JSON.parse(raw);
+      } catch (e) { /* localStorage deshabilitado por el navegador */ }
+      return { takenSlots: [], turnCounter: 0 };
+    }
+
+    // Guarda el estado en localStorage
+    function saveState() {
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify({
+          takenSlots:   takenSlots,
+          turnCounter:  turnCounter
+        }));
+      } catch (e) { /* cuota llena u otro error — falla silenciosamente */ }
+    }
 
     /* ═══════════════════════════════════════════════════
        ESTADO DE LA APP
        ═══════════════════════════════════════════════════ */
-    let selectedSlot    = null;  // turno seleccionado (string 'HH:MM')
-    let reservationData = {};    // datos del ticket generado
+
+    const _saved = loadState();
+
+    // takenSlots = bloqueados por el dueño ∪ reservados guardados en localStorage
+    // El Set elimina duplicados automáticamente
+    const takenSlots  = [...new Set([...BLOCKED_BY_OWNER, ..._saved.takenSlots])];
+    let   turnCounter = _saved.turnCounter;   // contador persistente
+
+    let selectedSlot    = null;  // turno elegido actualmente
+    let reservationData = {};    // datos del último ticket generado
 
     /* ═══════════════════════════════════════════════════
        UTILIDADES
        ═══════════════════════════════════════════════════ */
 
-    // Convierte minutos totales → 'HH:MM'
+    // Minutos totales → 'HH:MM'
     function minsToTime(totalMins) {
       const h = Math.floor(totalMins / 60).toString().padStart(2, '0');
       const m = (totalMins % 60).toString().padStart(2, '0');
       return `${h}:${m}`;
     }
 
-    // Convierte 'HH:MM' (24h) → '07:00 AM' / '01:00 PM'
+    // 'HH:MM' (24h) → '7:00 AM' / '1:00 PM'
     function to12h(time24) {
       const [h, m] = time24.split(':').map(Number);
       const period = h < 12 ? 'AM' : 'PM';
@@ -549,19 +578,22 @@
       return `${h12}:${m.toString().padStart(2, '0')} ${period}`;
     }
 
-    // Fecha de hoy formateada
+    // Fecha de hoy en español
     function todayFormatted() {
       return new Date().toLocaleDateString('es-MX', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
       });
     }
 
-    // Genera número de turno aleatorio tipo #07, #23…
-    function randomTurnNumber() {
-      return '#' + Math.floor(Math.random() * 99 + 1).toString().padStart(2, '0');
+    // Incrementa el contador y devuelve '#01', '#02'…
+    // Se guarda en localStorage para que no se repita al recargar
+    function nextTurnNumber() {
+      turnCounter++;
+      saveState();                                    // ← persiste el nuevo valor
+      return '#' + turnCounter.toString().padStart(2, '0');
     }
 
-    // Muestra el toast de notificación
+    // Toast de notificación temporal
     function showToast(msg) {
       const t = document.getElementById('toast');
       t.textContent = msg;
@@ -570,7 +602,9 @@
     }
 
     /* ═══════════════════════════════════════════════════
-       GENERACIÓN DE TURNOS
+       GENERACIÓN DE LA CUADRÍCULA DE TURNOS
+       Usa takenSlots (localStorage + dueño) para saber
+       qué botones pintar de gris desde el inicio.
        ═══════════════════════════════════════════════════ */
     function buildSlots() {
       const grid = document.getElementById('slots-grid');
@@ -580,15 +614,15 @@
       const endMins   = END_HOUR   * 60;
 
       for (let t = startMins; t < endMins; t += SLOT_MINS) {
-        const time24   = minsToTime(t);
-        const isTaken  = TAKEN_SLOTS.includes(time24);
-        const label    = to12h(time24);
+        const time24  = minsToTime(t);
+        const isTaken = takenSlots.includes(time24);
+        const label   = to12h(time24);
 
         const btn = document.createElement('button');
-        btn.className  = `slot-btn ${isTaken ? 'taken' : 'available'}`;
-        btn.textContent = label;
-        btn.disabled   = isTaken;
-        btn.dataset.time = time24;
+        btn.className        = `slot-btn ${isTaken ? 'taken' : 'available'}`;
+        btn.textContent      = label;
+        btn.disabled         = isTaken;
+        btn.dataset.time     = time24;
 
         if (!isTaken) {
           btn.addEventListener('click', () => selectSlot(btn, time24));
@@ -602,8 +636,8 @@
        SELECCIÓN DE TURNO
        ═══════════════════════════════════════════════════ */
     function selectSlot(btn, time24) {
-      // Quita selección anterior
-      document.querySelectorAll('.slot-btn.selected').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('.slot-btn.selected')
+        .forEach(b => b.classList.remove('selected'));
 
       selectedSlot = time24;
       btn.classList.add('selected');
@@ -613,7 +647,7 @@
     }
 
     /* ═══════════════════════════════════════════════════
-       RESUMEN Y VALIDACIÓN
+       RESUMEN Y VALIDACIÓN DEL BOTÓN CONFIRMAR
        ═══════════════════════════════════════════════════ */
     function updateSummary() {
       const name    = document.getElementById('input-name').value.trim();
@@ -632,8 +666,8 @@
     function checkConfirmReady() {
       const name    = document.getElementById('input-name').value.trim();
       const service = document.getElementById('input-service').value;
-      const btn     = document.getElementById('btn-confirm');
-      btn.disabled  = !(name && service && selectedSlot);
+      const btnC    = document.getElementById('btn-confirm');
+      btnC.disabled = !(name && service && selectedSlot);
     }
 
     /* ═══════════════════════════════════════════════════
@@ -642,13 +676,9 @@
     function openModal() {
       const name    = document.getElementById('input-name').value.trim();
       const service = document.getElementById('input-service').value;
-      const timeStr = to12h(selectedSlot);
-      const numTurn = randomTurnNumber();
+      const timeStr = to12h(reservationData.rawSlot);  // usa el slot ya guardado
+      const numTurn = reservationData.turn;
 
-      // Guardar datos para reutilizar en WhatsApp / descarga
-      reservationData = { name, service, time: timeStr, date: todayFormatted(), turn: numTurn };
-
-      // Rellenar ticket
       document.getElementById('t-name').textContent    = name;
       document.getElementById('t-service').textContent = service;
       document.getElementById('t-date').textContent    = todayFormatted();
@@ -664,18 +694,57 @@
       document.body.style.overflow = '';
     }
 
-    // Cerrar al hacer clic fuera del ticket
     document.getElementById('modal-overlay').addEventListener('click', function(e) {
       if (e.target === this) closeModal();
     });
 
     /* ═══════════════════════════════════════════════════
        BOTÓN CONFIRMAR
+       Al hacer clic:
+         1. Agrega el slot a takenSlots[]
+         2. Guarda en localStorage (persiste entre recargas)
+         3. Actualiza el botón en la cuadrícula a gris
+         4. Limpia la selección activa
+         5. Abre el modal con el ticket
        ═══════════════════════════════════════════════════ */
     document.getElementById('btn-confirm').addEventListener('click', () => {
       const name    = document.getElementById('input-name').value.trim();
       const service = document.getElementById('input-service').value;
       if (!name || !service || !selectedSlot) return;
+
+      const slotToBook = selectedSlot;   // copia antes de limpiar
+
+      // 1. Añadir al array en memoria
+      if (!takenSlots.includes(slotToBook)) {
+        takenSlots.push(slotToBook);
+      }
+
+      // 2. Persistir en localStorage
+      saveState();
+
+      // 3. Actualizar botón visualmente
+      const slotBtn = document.querySelector(`.slot-btn[data-time="${slotToBook}"]`);
+      if (slotBtn) {
+        slotBtn.classList.remove('available', 'selected');
+        slotBtn.classList.add('taken');
+        slotBtn.disabled = true;
+      }
+
+      // 4. Preparar datos del ticket (turno secuencial ya incrementado)
+      const numTurn = nextTurnNumber();
+      reservationData = {
+        name, service,
+        rawSlot: slotToBook,
+        time:    to12h(slotToBook),
+        date:    todayFormatted(),
+        turn:    numTurn
+      };
+
+      // 5. Limpiar selección
+      selectedSlot = null;
+      document.getElementById('summary-box').classList.add('hidden');
+      document.getElementById('btn-confirm').disabled = true;
+
       openModal();
     });
 
@@ -685,7 +754,6 @@
     document.getElementById('btn-wsp').addEventListener('click', () => {
       const { name, service, time, turn } = reservationData;
 
-      // ── Edita el mensaje que recibirá el dueño ──
       const msg = encodeURIComponent(
         `¡Hola ${BUSINESS_NAME}! 👋\n` +
         `Acabo de reservar un turno:\n\n` +
@@ -700,17 +768,12 @@
     });
 
     /* ═══════════════════════════════════════════════════
-       DESCARGAR TICKET
-       Estrategia: imprime solo el ticket con window.print()
-       En móvil, el SO genera un PDF desde la vista de impresión.
+       DESCARGAR TICKET (ventana de impresión / PDF en móvil)
        ═══════════════════════════════════════════════════ */
     document.getElementById('btn-download').addEventListener('click', () => {
       const { name, service, time, date, turn } = reservationData;
 
-      // Abre ventana de impresión con contenido del ticket
-      const win = window.open('', '_blank',
-        'width=400,height=600,left=50,top=50');
-
+      const win = window.open('', '_blank', 'width=400,height=600,left=50,top=50');
       win.document.write(`
         <!DOCTYPE html><html><head>
         <meta charset="UTF-8">
@@ -730,7 +793,7 @@
           .num{text-align:center;padding:.8rem;border-top:1px solid #2a2a2a;}
           .num p{font-size:.6rem;letter-spacing:.2em;color:#888;text-transform:uppercase;}
           .num h2{font-family:'Playfair Display',serif;font-size:2.2rem;color:#C9A84C;}
-          @media print{body{background:#fff;color:#111;} .card{border-color:#333;background:#fff;} .hdr{background:#f0e8d0;} .hdr h1{color:#9B7A2F;-webkit-text-fill-color:#9B7A2F;} .num h2{color:#9B7A2F;}}
+          @media print{body{background:#fff;color:#111;}.card{border-color:#333;background:#fff;}.hdr{background:#f0e8d0;}.hdr h1{color:#9B7A2F;-webkit-text-fill-color:#9B7A2F;}.num h2{color:#9B7A2F;}}
         </style></head><body>
         <div class="card">
           <div class="hdr"><h1>${BUSINESS_NAME}</h1><p>Comprobante de Reserva</p></div>
@@ -746,12 +809,11 @@
         </body></html>
       `);
       win.document.close();
-
       showToast('✓ Abriendo vista de impresión…');
     });
 
     /* ═══════════════════════════════════════════════════
-       EVENTOS EN TIEMPO REAL (nombre y servicio)
+       EVENTOS EN TIEMPO REAL
        ═══════════════════════════════════════════════════ */
     document.getElementById('input-name').addEventListener('input', () => {
       updateSummary(); checkConfirmReady();
@@ -761,7 +823,8 @@
     });
 
     /* ═══════════════════════════════════════════════════
-       INICIALIZAR
+       INICIALIZAR — buildSlots lee takenSlots que ya
+       incluye lo guardado en localStorage
        ═══════════════════════════════════════════════════ */
     buildSlots();
   </script>
