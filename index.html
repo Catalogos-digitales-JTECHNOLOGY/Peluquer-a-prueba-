@@ -500,6 +500,10 @@
     // ── WhatsApp del negocio (código de país + número, sin +)
     const WA_PHONE = '522221234567';
 
+    // ── SheetDB — API conectada a tu Google Sheet
+    //    Si regeneras la API en sheetdb.io, actualiza esta URL
+    const SHEETDB_URL = 'https://sheetdb.io/api/v1/km43dvj534708';
+
     // ── Horario de atención
     const START_HOUR = 7;    // 7:00 AM
     const END_HOUR   = 19;   // 7:00 PM
@@ -707,12 +711,17 @@
          4. Limpia la selección activa
          5. Abre el modal con el ticket
        ═══════════════════════════════════════════════════ */
-    document.getElementById('btn-confirm').addEventListener('click', () => {
+    document.getElementById('btn-confirm').addEventListener('click', async () => {
       const name    = document.getElementById('input-name').value.trim();
       const service = document.getElementById('input-service').value;
       if (!name || !service || !selectedSlot) return;
 
-      const slotToBook = selectedSlot;   // copia antes de limpiar
+      // Deshabilitar botón y mostrar estado de carga
+      const btnC = document.getElementById('btn-confirm');
+      btnC.disabled  = true;
+      btnC.textContent = '⏳ Guardando reserva…';
+
+      const slotToBook = selectedSlot;
 
       // 1. Añadir al array en memoria
       if (!takenSlots.includes(slotToBook)) {
@@ -722,7 +731,7 @@
       // 2. Persistir en localStorage
       saveState();
 
-      // 3. Actualizar botón visualmente
+      // 3. Actualizar botón visualmente en la cuadrícula
       const slotBtn = document.querySelector(`.slot-btn[data-time="${slotToBook}"]`);
       if (slotBtn) {
         slotBtn.classList.remove('available', 'selected');
@@ -730,20 +739,50 @@
         slotBtn.disabled = true;
       }
 
-      // 4. Preparar datos del ticket (turno secuencial ya incrementado)
+      // 4. Preparar datos del ticket
       const numTurn = nextTurnNumber();
+      const timeStr = to12h(slotToBook);
+      const dateStr = todayFormatted();
       reservationData = {
         name, service,
         rawSlot: slotToBook,
-        time:    to12h(slotToBook),
-        date:    todayFormatted(),
+        time:    timeStr,
+        date:    dateStr,
         turn:    numTurn
       };
 
-      // 5. Limpiar selección
+      // 5. Enviar a Google Sheet via SheetDB
+      //    Las claves del objeto deben coincidir EXACTAMENTE
+      //    con los encabezados de tu Sheet (fila 1).
+      try {
+        const response = await fetch(SHEETDB_URL, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            data: [{
+              Nombre:  name,
+              Servicio: service,
+              Hora:    timeStr,
+              Fecha:   dateStr,
+              Turno:   numTurn
+            }]
+          })
+        });
+
+        if (!response.ok) throw new Error('SheetDB respondió con error');
+
+        showToast('✓ Reserva guardada en el registro');
+      } catch (err) {
+        // Si falla SheetDB, la reserva local ya se guardó (localStorage)
+        // Solo se avisa al usuario, no se bloquea el flujo
+        console.warn('SheetDB error:', err);
+        showToast('⚠ Sin conexión — reserva guardada solo localmente');
+      }
+
+      // 6. Limpiar selección y abrir modal con el ticket
       selectedSlot = null;
       document.getElementById('summary-box').classList.add('hidden');
-      document.getElementById('btn-confirm').disabled = true;
+      btnC.textContent = 'Confirmar Reserva';
 
       openModal();
     });
