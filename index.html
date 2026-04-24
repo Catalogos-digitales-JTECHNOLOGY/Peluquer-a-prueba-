@@ -498,7 +498,7 @@
     const BUSINESS_NAME = 'El Filo Dorado';
 
     // ── WhatsApp del negocio (código de país + número, sin +)
-    const WA_PHONE = '2224613215';
+    const WA_PHONE = '522221234567';
 
     // ── SheetDB — API conectada a tu Google Sheet
     //    Si regeneras la API en sheetdb.io, actualiza esta URL
@@ -557,7 +557,7 @@
 
     // takenSlots = bloqueados por el dueño ∪ reservados guardados en localStorage
     // El Set elimina duplicados automáticamente
-    const takenSlots  = [...new Set([...BLOCKED_BY_OWNER, ..._saved.takenSlots])];
+    let takenSlots  = [...new Set([...BLOCKED_BY_OWNER, ..._saved.takenSlots])];
     let   turnCounter = _saved.turnCounter;   // contador persistente
 
     let selectedSlot    = null;  // turno elegido actualmente
@@ -862,10 +862,82 @@
     });
 
     /* ═══════════════════════════════════════════════════
-       INICIALIZAR — buildSlots lee takenSlots que ya
-       incluye lo guardado en localStorage
+       INICIALIZAR
+       Flujo:
+         1. Muestra un spinner mientras carga
+         2. Consulta SheetDB para obtener los turnos ya
+            reservados HOY desde cualquier dispositivo
+         3. Fusiona con localStorage y BLOCKED_BY_OWNER
+         4. Renderiza la cuadrícula con el estado real
+       Si SheetDB falla, usa solo localStorage como respaldo.
        ═══════════════════════════════════════════════════ */
-    buildSlots();
+    async function init() {
+      // Mostrar spinner en la cuadrícula mientras carga
+      const grid = document.getElementById('slots-grid');
+      grid.innerHTML = `
+        <div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted)">
+          <div style="font-size:1.5rem;margin-bottom:.5rem">⏳</div>
+          <div style="font-size:.85rem;letter-spacing:.1em">Cargando horarios…</div>
+        </div>`;
+
+      try {
+        // ── Consultar SheetDB filtrando solo los registros de HOY ──
+        // Traemos todos y filtramos por fecha para no depender del
+        // formato exacto que SheetDB usa al comparar.
+        const today = todayFormatted();
+        const res   = await fetch(`${SHEETDB_URL}?limit=500`);
+
+        if (res.ok) {
+          const rows = await res.json();
+
+          // Extraer las horas reservadas HOY desde el Sheet
+          // Convertimos '7:00 AM' → '07:00' para comparar con los slots
+          const sheetTaken = rows
+            .filter(r => r.Fecha === today && r.Hora)
+            .map(r => {
+              // Convertir '7:00 AM' / '1:00 PM' de vuelta a 'HH:MM' (24h)
+              const [timePart, period] = r.Hora.trim().split(' ');
+              let [h, m] = timePart.split(':').map(Number);
+              if (period === 'PM' && h !== 12) h += 12;
+              if (period === 'AM' && h === 12) h = 0;
+              return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+            });
+
+          // También actualizar el turnCounter con el máximo del Sheet
+          // para que el siguiente turno sea siempre mayor al último registrado
+          const sheetCounters = rows
+            .filter(r => r.Fecha === today && r.Turno)
+            .map(r => parseInt(r.Turno.replace('#','')) || 0);
+          if (sheetCounters.length > 0) {
+            const maxSheet = Math.max(...sheetCounters);
+            if (maxSheet > turnCounter) {
+              turnCounter = maxSheet;
+              saveState();
+            }
+          }
+
+          // Fusionar: Sheet + localStorage + dueño (sin duplicados)
+          const merged = [...new Set([
+            ...BLOCKED_BY_OWNER,
+            ..._saved.takenSlots,
+            ...sheetTaken
+          ])];
+
+          // Actualizar el array de estado global
+          takenSlots.length = 0;
+          merged.forEach(s => takenSlots.push(s));
+        }
+      } catch (err) {
+        // Sin conexión o error de SheetDB → usa solo localStorage
+        console.warn('No se pudo consultar SheetDB:', err);
+        showToast('⚠ Sin conexión — mostrando horarios locales');
+      }
+
+      // Renderizar cuadrícula con el estado final
+      buildSlots();
+    }
+
+    init();
   </script>
 
 </body>
