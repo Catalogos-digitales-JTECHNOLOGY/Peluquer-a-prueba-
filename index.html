@@ -679,7 +679,7 @@
         const res = await fetch(SHEETDB_URL, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ data:[{ Nombre:name, Servicio:svc, Hora:timeStr, Fecha:dateStr, Turno:numTurn }] })
+          body: JSON.stringify({ data:[{ Nombre:name, Servicio:svc, Hora:timeStr, Fecha:dateStr, Turno:numTurn , Precio:price}] })
         });
         if (!res.ok) throw new Error();
         showToast('✓ Reserva guardada en el registro');
