@@ -186,6 +186,45 @@
       font-size:1.15rem; font-weight:900; color:var(--gold);
     }
 
+    /* ── Bloqueo de horas ── */
+    .hour-block-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); gap:.35rem; }
+    .hour-block-btn {
+      border-radius:7px; padding:.42rem .3rem; font-size:.75rem; font-weight:600;
+      border:1px solid #333; background:var(--bg-card2); color:var(--text-muted);
+      cursor:pointer; text-align:center; transition:all .18s;
+    }
+    .hour-block-btn:hover { border-color:#555; color:var(--text-white); }
+    .hour-block-btn.blocked-hour {
+      background:rgba(180,40,40,.22); border-color:rgba(180,40,40,.55);
+      color:#f08080;
+    }
+    .hour-select-day {
+      width:100%; background:var(--bg-card2); border:1px solid #333;
+      border-radius:8px; padding:.6rem .9rem; color:var(--text-white);
+      font-family:'Barlow',sans-serif; font-size:.88rem; outline:none;
+      transition:border-color .25s; margin-bottom:.75rem;
+    }
+    .hour-select-day:focus { border-color:var(--gold); }
+    .hour-select-day option { background:#1a1a1a; }
+
+    /* ── Ingresos ── */
+    .income-box {
+      background:linear-gradient(135deg,#1a1205,#2a1e08);
+      border:1px solid var(--gold-dark); border-radius:10px;
+      padding:1rem 1.2rem; margin-bottom:.8rem;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .income-label { font-size:.72rem; text-transform:uppercase; letter-spacing:.12em; color:var(--text-muted); }
+    .income-value { font-family:'Playfair Display',serif; font-size:1.6rem; font-weight:900; color:var(--gold); }
+    .income-count { font-size:.78rem; color:var(--text-muted); margin-top:.1rem; }
+    .income-row {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:.4rem 0; border-bottom:1px solid #2a2a2a; font-size:.82rem;
+    }
+    .income-row:last-child { border:none; }
+    .income-svc { color:var(--text-muted); }
+    .income-price { font-weight:700; color:var(--gold-light); }
+
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:var(--bg-dark); }
     ::-webkit-scrollbar-thumb { background:#333; border-radius:3px; }
@@ -335,7 +374,7 @@
       </div>
       <div class="panel-body">
 
-        <!-- Bloquear días -->
+        <!-- ══ SECCIÓN 1: Bloquear días completos ══ -->
         <div class="panel-section">
           <p class="panel-section-title">📅 Bloquear días sin atención</p>
           <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:.75rem">Toca un día para bloquearlo (rojo). Tócalo de nuevo para desbloquearlo.</p>
@@ -353,7 +392,23 @@
           <div class="block-cal-grid" id="block-cal-grid"></div>
         </div>
 
-        <!-- Agenda -->
+        <!-- ══ SECCIÓN 2: Bloquear horas específicas ══ -->
+        <div class="panel-section">
+          <p class="panel-section-title">🕐 Bloquear horas específicas</p>
+          <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:.75rem">
+            Selecciona el día y toca las horas que quieres cerrar (rojo = bloqueada). Toca de nuevo para desbloquear.
+          </p>
+          <!-- Selector de día -->
+          <select id="hour-block-day-select" class="hour-select-day">
+            <!-- Se rellena con JS con los próximos MAX_DAYS_AHEAD días -->
+          </select>
+          <!-- Grid de horas -->
+          <div class="hour-block-grid" id="hour-block-grid">
+            <p style="font-size:.8rem;color:var(--text-muted);grid-column:1/-1;text-align:center;padding:.5rem">Selecciona un día arriba</p>
+          </div>
+        </div>
+
+        <!-- ══ SECCIÓN 3: Agenda del día ══ -->
         <div class="panel-section">
           <p class="panel-section-title" id="agenda-title">📋 Agenda del día</p>
           <div style="display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap;align-items:center">
@@ -362,6 +417,17 @@
             <button id="btn-agenda-next" class="cal-nav" style="width:auto;padding:0 .7rem;font-size:.78rem">Siguiente ›</button>
           </div>
           <div id="agenda-list"></div>
+        </div>
+
+        <!-- ══ SECCIÓN 4: Ingresos del día ══ -->
+        <div class="panel-section">
+          <p class="panel-section-title">💰 Ingresos del día</p>
+          <div style="display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap;align-items:center">
+            <button id="btn-income-prev" class="cal-nav" style="width:auto;padding:0 .7rem;font-size:.78rem">‹ Anterior</button>
+            <span id="income-date-label" style="font-size:.78rem;color:var(--gold);padding:.2rem .6rem;border:1px solid var(--gold-dark);border-radius:6px;flex:1;text-align:center"></span>
+            <button id="btn-income-next" class="cal-nav" style="width:auto;padding:0 .7rem;font-size:.78rem">Siguiente ›</button>
+          </div>
+          <div id="income-content"></div>
         </div>
 
       </div>
@@ -377,7 +443,7 @@
        CONFIGURACIÓN — EDITA AQUÍ
        ═══════════════════════════════════════════════════ */
     const BUSINESS_NAME  = 'El Filo Dorado';
-    const WA_PHONE       = '2224613215';   // código país + número sin +
+    const WA_PHONE       = '522221234567';   // código país + número sin +
     const START_HOUR     = 7;               // hora apertura 24h
     const END_HOUR       = 19;              // hora cierre 24h
     const SLOT_MINS      = 40;              // minutos por turno
@@ -433,6 +499,19 @@
     let calViewYear, calViewMonth;
     let blockCalYear, blockCalMonth;
     let agendaDate     = todayStr();
+    let incomeDate     = todayStr();   // fecha activa en la sección de ingresos
+    let hourBlockDate  = todayStr();   // fecha activa en el bloqueo de horas
+
+    // Horas bloqueadas por la dueña: { 'YYYY-MM-DD': ['09:00','10:20',...] }
+    const LS_BLOCKED_HOURS = 'barberia_blocked_hours';
+    function loadBlockedHours() {
+      try { const r=localStorage.getItem(LS_BLOCKED_HOURS); if(r) return JSON.parse(r); } catch(e) {}
+      return {};
+    }
+    function saveBlockedHours(obj) {
+      try { localStorage.setItem(LS_BLOCKED_HOURS, JSON.stringify(obj)); } catch(e) {}
+    }
+    let blockedHours = loadBlockedHours(); // objeto global
     {
       const n = new Date();
       calViewYear = blockCalYear = n.getFullYear();
@@ -590,7 +669,9 @@
             const mx = Math.max(...ctrs);
             if (mx>turnCounter) { turnCounter=mx; saveState(str,takenSlots,turnCounter); }
           }
-          const merged = [...new Set([...BLOCKED_BY_OWNER,...saved.takenSlots,...sheetTaken])];
+          // También bloquear las horas que la dueña cerró manualmente para este día
+          const ownerHours = (blockedHours[str] || []);
+          const merged = [...new Set([...BLOCKED_BY_OWNER,...saved.takenSlots,...sheetTaken,...ownerHours])];
           takenSlots.length=0; merged.forEach(s=>takenSlots.push(s));
         }
       } catch(e) { showToast('⚠ Sin conexión — horarios locales'); }
@@ -679,7 +760,7 @@
         const res = await fetch(SHEETDB_URL, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ data:[{ Nombre:name, Servicio:svc, Hora:timeStr, Fecha:dateStr, Turno:numTurn , Precio:price}] })
+          body: JSON.stringify({ data:[{ Nombre:name, Servicio:svc, Hora:timeStr, Fecha:dateStr, Turno:numTurn }] })
         });
         if (!res.ok) throw new Error();
         showToast('✓ Reserva guardada en el registro');
@@ -791,6 +872,133 @@
     document.getElementById('panel-password').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
 
     /* ─── Calendario bloqueador ─── */
+    /* ─── Bloqueo de horas específicas ─── */
+
+    // Rellena el <select> con los próximos MAX_DAYS_AHEAD días
+    function fillHourBlockDaySelect() {
+      const sel   = document.getElementById('hour-block-day-select');
+      const today = new Date(); today.setHours(0,0,0,0);
+      sel.innerHTML = '<option value="">— Selecciona un día —</option>';
+      for (let i=0; i<=MAX_DAYS_AHEAD; i++) {
+        const d   = new Date(today); d.setDate(today.getDate()+i);
+        const str = toDateStr(d);
+        const lbl = d.toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
+        const opt = document.createElement('option');
+        opt.value       = str;
+        opt.textContent = (i===0 ? '📅 Hoy — ' : '') + lbl;
+        if (str === hourBlockDate) opt.selected = true;
+        sel.appendChild(opt);
+      }
+    }
+
+    // Dibuja la grilla de horas para el día seleccionado
+    function renderHourBlockGrid(dateStr) {
+      hourBlockDate = dateStr;
+      const grid    = document.getElementById('hour-block-grid');
+      grid.innerHTML = '';
+      if (!dateStr) {
+        grid.innerHTML = '<p style="font-size:.8rem;color:var(--text-muted);grid-column:1/-1;text-align:center;padding:.5rem">Selecciona un día arriba</p>';
+        return;
+      }
+      const dayBlocked = blockedHours[dateStr] || [];
+      for (let t=START_HOUR*60; t<END_HOUR*60; t+=SLOT_MINS) {
+        const time24  = minsToTime(t);
+        const isBlk   = dayBlocked.includes(time24);
+        const btn     = document.createElement('button');
+        btn.className        = 'hour-block-btn' + (isBlk ? ' blocked-hour' : '');
+        btn.textContent      = to12h(time24);
+        btn.dataset.time     = time24;
+        btn.title            = isBlk ? 'Bloqueada — clic para desbloquear' : 'Disponible — clic para bloquear';
+        btn.addEventListener('click', ()=>toggleBlockedHour(dateStr, time24, btn));
+        grid.appendChild(btn);
+      }
+    }
+
+    // Alterna bloqueo/desbloqueo de una hora en un día
+    function toggleBlockedHour(dateStr, time24, btn) {
+      if (!blockedHours[dateStr]) blockedHours[dateStr] = [];
+      const arr = blockedHours[dateStr];
+      const idx = arr.indexOf(time24);
+      if (idx===-1) {
+        arr.push(time24);
+        btn.classList.add('blocked-hour');
+        btn.title = 'Bloqueada — clic para desbloquear';
+        showToast(`🚫 ${to12h(time24)} bloqueada`);
+      } else {
+        arr.splice(idx,1);
+        btn.classList.remove('blocked-hour');
+        btn.title = 'Disponible — clic para bloquear';
+        showToast(`✓ ${to12h(time24)} desbloqueada`);
+      }
+      // Si el día queda sin horas bloqueadas, limpiamos la clave
+      if (arr.length===0) delete blockedHours[dateStr];
+      saveBlockedHours(blockedHours);
+      // Si el cliente ya tiene ese día seleccionado, recargar sus slots
+      if (selectedDate===dateStr) selectDate(dateStr);
+    }
+
+    // Listener del select de días
+    document.getElementById('hour-block-day-select').addEventListener('change', function() {
+      renderHourBlockGrid(this.value);
+    });
+
+    /* ─── Ingresos por día ─── */
+    async function loadIncome(dateStr) {
+      incomeDate = dateStr;
+      const content = document.getElementById('income-content');
+      const lbl     = document.getElementById('income-date-label');
+      lbl.textContent = formatLong(dateStr);
+      content.innerHTML = '<p style="font-size:.83rem;color:var(--text-muted);text-align:center;padding:1rem">⏳ Cargando…</p>';
+
+      try {
+        const res  = await fetch(`${SHEETDB_URL}?limit=500`);
+        if (!res.ok) throw new Error();
+        const rows = await res.json();
+        const dl   = formatLong(dateStr);
+
+        // Filtrar por fecha y ordenar por hora
+        const dayRows = rows
+          .filter(r=>r.Fecha===dl&&r.Hora)
+          .sort((a,b)=>to24mins(a.Hora)-to24mins(b.Hora));
+
+        if (dayRows.length===0) {
+          content.innerHTML='<p style="font-size:.83rem;color:var(--text-muted);text-align:center;padding:1.2rem">Sin reservas este día</p>';
+          return;
+        }
+
+        // Sumar ingresos — parsear el precio eliminando el símbolo $
+        let total = 0;
+        const rows_html = dayRows.map(r=>{
+          const precioStr = (r.Precio||'$0').replace(/[^0-9.]/g,'');
+          const precio    = parseFloat(precioStr)||0;
+          total += precio;
+          return `<div class="income-row">
+            <span class="income-svc">${r.Hora} · ${r.Nombre||'—'}<br>
+              <span style="font-size:.72rem">${r.Servicio||''}</span>
+            </span>
+            <span class="income-price">${r.Precio||'—'}</span>
+          </div>`;
+        }).join('');
+
+        content.innerHTML = `
+          <div class="income-box">
+            <div>
+              <div class="income-label">Total del día</div>
+              <div class="income-count">${dayRows.length} reserva${dayRows.length!==1?'s':''}</div>
+            </div>
+            <div class="income-value">$${total.toLocaleString('es-MX')}</div>
+          </div>
+          <div style="background:var(--bg-card2);border:1px solid #2a2a2a;border-radius:8px;padding:.6rem .9rem;">
+            ${rows_html}
+          </div>`;
+      } catch(e) {
+        content.innerHTML='<p style="font-size:.83rem;color:#f08080;text-align:center;padding:1rem">Sin conexión</p>';
+      }
+    }
+
+    document.getElementById('btn-income-prev').addEventListener('click',()=>{ const d=parseLocal(incomeDate); d.setDate(d.getDate()-1); loadIncome(toDateStr(d)); });
+    document.getElementById('btn-income-next').addEventListener('click',()=>{ const d=parseLocal(incomeDate); d.setDate(d.getDate()+1); loadIncome(toDateStr(d)); });
+
     function renderBlockCal() {
       const grid  = document.getElementById('block-cal-grid');
       const label = document.getElementById('block-cal-label');
@@ -867,7 +1075,13 @@
     document.getElementById('btn-agenda-prev').addEventListener('click',()=>{ const d=parseLocal(agendaDate); d.setDate(d.getDate()-1); loadAgenda(toDateStr(d)); });
     document.getElementById('btn-agenda-next').addEventListener('click',()=>{ const d=parseLocal(agendaDate); d.setDate(d.getDate()+1); loadAgenda(toDateStr(d)); });
 
-    function showPanelContent() { renderBlockCal(); loadAgenda(agendaDate); }
+    function showPanelContent() {
+      renderBlockCal();
+      fillHourBlockDaySelect();
+      renderHourBlockGrid(hourBlockDate);
+      loadAgenda(agendaDate);
+      loadIncome(incomeDate);
+    }
 
     /* ═══════════════════════════════════════════════════
        INICIALIZAR
